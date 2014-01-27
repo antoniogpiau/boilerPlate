@@ -62,7 +62,6 @@ def parse(file_names):
 	print QUIT_MESSAGE
 
 def parse_image(script_files_data, type, paths):
-	# print paths
 	resolution = paths[0]
 	scene_name = paths[1]
 	file_name = paths[2]
@@ -81,38 +80,70 @@ def parse_image(script_files_data, type, paths):
 	file_data.append(file_name)
 
 	script_files_data[type][resolution][scene_name].append(file_data)
-	# script_files_data[resolution][scene_name].append(paths[2])
 
 	return script_files_data
 
 def parse_audio(script_files_data, type, paths):
+	scene_name = paths[0]
+	file_name = paths[1]
+	base_name = paths[1][:-4] # [:-4] => REMOVES FILE EXTENSION '.mp3'
+
+	if not type in script_files_data:
+		script_files_data[type] = {}
+
+	if not scene_name in script_files_data[type]:
+		script_files_data[type][scene_name] = []
+
+	file_data = file_name, base_name
+
+	script_files_data[type][scene_name].append(file_data)
+
 	return script_files_data;
 
 def write_files(script_files_data):
 	for type in script_files_data:
 		if type == 'images':
 			for resolution in script_files_data[type]:
-				file = open_file_with_resolution(resolution)
-				file.write(generate_file_text(script_files_data[type][resolution]))
+				file = open_image_file_with_resolution(resolution)
+				file.write(generate_image_file_text(script_files_data[type][resolution]))
 				file.close()
-		# elif type == 'audio':
 
-def open_file_with_resolution(resolution):
+		elif type == 'audios':
+			file = open_audio_file()
+			file.write(generate_audio_file_text(script_files_data[type]))
+			file.close()
+
+def open_image_file_with_resolution(resolution):
 	return open('scripts/'+SCRIPT_IMAGES_PREFIX+resolution+'.lua', 'w')
 
-def generate_file_text(file_data):
+def open_audio_file():
+	return open('scripts/'+SCRIPT_AUDIO_PREFIX+'.lua', 'w')
+
+def generate_image_file_text(file_data):
 	str = skip_line()
 	str += 'local scenesImages = {}'
 	str += skip_line(2)
 
 	for scene_data in sorted(file_data, cmp_string_numbers_and_strings):
-		str += generate_scene_text(scene_data, file_data[scene_data])
+		str += generate_image_scene_text(scene_data, file_data[scene_data])
 
 	str += 'return scenesImages'
 
 	return str
 
-def generate_scene_text(scene_name, scene_data):
+def generate_audio_file_text(file_data):
+	str = skip_line()
+	str += 'local scenesAudios = {}'
+	str += skip_line(2)
+
+	for scene_data in sorted(file_data, cmp_string_numbers_and_strings):
+		str += generate_audio_scene_text(scene_data, file_data[scene_data])
+
+	str += 'return scenesImages'
+
+	return str
+
+def generate_image_scene_text(scene_name, scene_data):
 	if not is_number(scene_name):
 		scene_name = '\'' + scene_name + '\''
 
@@ -129,11 +160,27 @@ def generate_scene_text(scene_name, scene_data):
 
 	return str
 
+def generate_audio_scene_text(scene_name, scene_data):
+	if not is_number(scene_name):
+		scene_name = '\'' + scene_name + '\''
+
+	str = 'scenesAudios[' + scene_name + '] = {' + skip_line()
+
+	str += indent() + 'elements = {' + skip_line()
+
+	for audio_data in scene_data:
+		str += indent(4) + generate_audio_text(audio_data) + skip_line()
+
+	str += indent() + '},' + skip_line()
+	str += '}' + skip_line(2)
+
+	return str
+
 def generate_image_text(image_data):
 	return '{type = "image", filename = "' + image_data[5] + '", index = "' + image_data[4] + '", x = ' + image_data[2] + ', y = ' + image_data[3] + ' },'
 
 def generate_audio_text(audio_data):
-	return '{type = "audio", filename = "' + audio_data[5] + '", index = "' + audio_data[4] + '", x = ' + audio_data[2] + ', y = ' + audio_data[3] + ' },'
+	return '{type = "audio", filename = "' + audio_data[0] + '", index = "' + audio_data[1] + '" },'
 
 def indent(number_of_spaces=2):
 	str = ''
