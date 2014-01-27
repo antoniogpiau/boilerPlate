@@ -1,9 +1,10 @@
 import os, time, threading
 
-PATH_TO_WATCH = 'design/images/'
+PATH_TO_WATCH = 'design/'
 QUIT_MESSAGE = 'You can type quit, if you want:'
 
-SCRIPT_FILES_PREFIX = 'scenesImages'
+SCRIPT_IMAGES_PREFIX = 'scenesImages'
+SCRIPT_AUDIO_PREFIX = 'scenesAudios'
 
 IGNORED_FILES = '.DS_Store', 'navigation'
 
@@ -37,7 +38,7 @@ class Observer(threading.Thread):
 			removed = [file for file in before if not file in after]
 
 			if added or removed:
-				parse(before)
+				parse(after)
 
 			before = after
 
@@ -47,37 +48,57 @@ def parse(file_names):
 	script_files_data = {}
 
 	for file_name in file_names:
+		type = file_name.split('/')[1]
 		paths = file_name.split('/')[2:] # [2:] => REMOVES 'design/images' OF THE LIST
 
-		resolution = paths[0]
-		scene_name = paths[1]
-		file_name = paths[2]
-		base_name = paths[2][:-4] # [:-4] => REMOVES FILE EXTENSION '.png'
+		if type == 'images':
+			script_files_data = parse_image(script_files_data, type, paths)
+		elif type == 'audios':
+			script_files_data = parse_audio(script_files_data, type, paths)
 
-		if not resolution in script_files_data:
-			script_files_data[resolution] = {}
-
-		if not scene_name in script_files_data[resolution]:
-			script_files_data[resolution][scene_name] = []
-
-		file_data = base_name.split('_')
-		file_data.append(file_name)
-
-		script_files_data[resolution][scene_name].append(file_data)
-		# script_files_data[resolution][scene_name].append(paths[2])
 
 	write_files(script_files_data)
 	print 'updated!'
 	print QUIT_MESSAGE
 
+def parse_image(script_files_data, type, paths):
+	# print paths
+	resolution = paths[0]
+	scene_name = paths[1]
+	file_name = paths[2]
+	base_name = paths[2][:-4] # [:-4] => REMOVES FILE EXTENSION '.png'
+
+	if not type in script_files_data:
+		script_files_data[type] = {}
+
+	if not resolution in script_files_data[type]:
+		script_files_data[type][resolution] = {}
+
+	if not scene_name in script_files_data[type][resolution]:
+		script_files_data[type][resolution][scene_name] = []
+
+	file_data = base_name.split('_')
+	file_data.append(file_name)
+
+	script_files_data[type][resolution][scene_name].append(file_data)
+	# script_files_data[resolution][scene_name].append(paths[2])
+
+	return script_files_data
+
+def parse_audio(script_files_data, type, paths):
+	return script_files_data;
+
 def write_files(script_files_data):
-	for resolution in script_files_data:
-		file = open_file_with_resolution(resolution)
-		file.write(generate_file_text(script_files_data[resolution]))
-		file.close()
+	for type in script_files_data:
+		if type == 'images':
+			for resolution in script_files_data[type]:
+				file = open_file_with_resolution(resolution)
+				file.write(generate_file_text(script_files_data[type][resolution]))
+				file.close()
+		# elif type == 'audio':
 
 def open_file_with_resolution(resolution):
-	return open('scripts/'+SCRIPT_FILES_PREFIX+resolution+'.lua', 'w')
+	return open('scripts/'+SCRIPT_IMAGES_PREFIX+resolution+'.lua', 'w')
 
 def generate_file_text(file_data):
 	str = skip_line()
@@ -109,8 +130,10 @@ def generate_scene_text(scene_name, scene_data):
 	return str
 
 def generate_image_text(image_data):
-	print image_data
 	return '{type = "image", filename = "' + image_data[5] + '", index = "' + image_data[4] + '", x = ' + image_data[2] + ', y = ' + image_data[3] + ' },'
+
+def generate_audio_text(audio_data):
+	return '{type = "audio", filename = "' + audio_data[5] + '", index = "' + audio_data[4] + '", x = ' + audio_data[2] + ', y = ' + audio_data[3] + ' },'
 
 def indent(number_of_spaces=2):
 	str = ''
