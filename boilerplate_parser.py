@@ -139,7 +139,7 @@ def generate_audio_file_text(file_data):
 	for scene_data in sorted(file_data, cmp_string_numbers_and_strings):
 		str += generate_audio_scene_text(scene_data, file_data[scene_data])
 
-	str += 'return scenesImages'
+	str += 'return scenesAudios'
 
 	return str
 
